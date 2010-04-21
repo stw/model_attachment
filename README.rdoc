@@ -1,6 +1,6 @@
 =ModelAttachment
 
-ModelAttachment is intended as an simple file attachment library for ActiveRecord.
+ModelAttachment is intended as an simple file attachment library for ActiveRecord. This is experimental software, the interface is subject to change and we are still adding tests.  Use with caution only in development.
 
 See the documentation for +has_attachement+ in ModelAttachment::ClassMethods for more detailed options.
 
