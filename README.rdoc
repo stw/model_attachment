@@ -84,3 +84,8 @@ The files that are assigned as attachments are, by default, placed in the direct
 
 ModelAttachment supports post processing by sending the types a command, this will be run on any images.
 
+==Credit
+
+This is a blatant strip down of the Paperclip module by Jon Yurek and thoughtbot, inc.
+
+
