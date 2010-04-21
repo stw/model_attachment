@@ -1,0 +1,86 @@
+=ModelAttachment
+
+ModelAttachment is intended as an simple file attachment library for ActiveRecord.
+
+See the documentation for +has_attachement+ in ModelAttachment::ClassMethods for more detailed options.
+
+==Quick Start
+
+In your model:
+
+  class Document < ActiveRecord::Base
+    has_attachment { 
+      :path => ":domain/:folder/:document/",
+      :types => {
+        :small => { :command => 'convert -geometry 100x100' },
+        :large => { :command => 'convert -geometry 500x500' }
+      } 
+    }
+    
+    def domain
+      # returns string representing the domain
+    end
+    
+    def folder
+      # returns string representing the folder
+    end
+    
+    def document
+      # returns string representing document
+    end
+  end
+
+In your migrations:
+
+  class AddAvatarColumnsToUser < ActiveRecord::Migration
+    def self.up
+      add_column :documents, :file_name,    :string
+      add_column :documents, :content_type, :string
+      add_column :documents, :file_size,    :integer
+      add_column :documents, :updated_at,   :datetime
+    end
+
+    def self.down
+      remove_column :documents, :file_name
+      remove_column :documents, :content_type
+      remove_column :documents, :file_size
+      remove_column :documents, :updated_at
+    end
+  end
+
+In your edit and new views:
+
+  <% form_for :document, @document, :url => document_path, :html => { :multipart => true } do |form| %>
+    <%= form.file_field :file_name %>
+  <% end %>
+
+In your controller:
+
+  def create
+    @document = Document.create( params[:user] )
+  end
+  
+  def send_file
+    # check permissions
+    @document = Document.find(params[:id])
+    x_send_file(@document.full_filename(params[:type]), :type => @document.content_type, :disposition => 'inline')
+  end
+  
+In your show view:
+
+  <%= link_to "Download", :controller => 'documents', :action => 'send_file', :id => @document.id, :type => :large %>
+
+==Usage
+
+The basics of model_attachment are quite simple: Declare that your model has an attachment with the has_attachment method, and give it a name. ModelAttachment will wrap up up to four attributes and give the a friendly front end. The attributes are file_name, file_size, content_type, and updated_at.
+
+Attachments can be validated with ModelAttachment's validation methods, validates_attachment_presence and validates_attachment_size.
+
+==Storage
+
+The files that are assigned as attachments are, by default, placed in the directory specified by the :path option to has_attachment. By default, this location is ":rails_root/system/:domain/:folder/:document/:basename.:extention".
+
+==Post Processing
+
+ModelAttachment supports post processing by sending the types a command, this will be run on any images.
+
