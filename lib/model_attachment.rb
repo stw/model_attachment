@@ -7,9 +7,7 @@
 
 # TODO - Add exception handling and validation testing
 
-require 'tempfile'
 require 'model_attachment/upfile'
-require 'model_attachment/iostream'
 
 # The base module that gets included in ActiveRecord::Base.
 module ModelAttachment
@@ -94,6 +92,7 @@ module ModelAttachment
       logger.info("[model_attachment] #{message}")
     end
     
+    # save the correct attribute info before the save
     def save_attributes
       @temp_file = self.file_name
       
@@ -109,7 +108,7 @@ module ModelAttachment
       
     end
     
-    # Does all the file processing, moves from temp, processes images, sets attributes
+    # Does all the file processing, moves from temp, processes images
     def save_attached_files
       options = self.class.attachment_options
       
@@ -229,19 +228,6 @@ module ModelAttachment
       @dirty
     end
   
-  end
-  
-  # Due to how ImageMagick handles its image format conversion and how Tempfile
-  # handles its naming scheme, it is necessary to override how Tempfile makes
-  # its names so as to allow for file extensions. Idea taken from the comments
-  # on this blog post:
-  # http://marsorange.com/archives/of-mogrify-ruby-tempfile-dynamic-class-definitions
-  class Tempfile < ::Tempfile
-    # Replaces Tempfile's +make_tmpname+ with one that honors file extensions.
-    def make_tmpname(basename, n)
-      extension = File.extname(basename)
-      sprintf("%s,%d,%d%s", File.basename(basename, extension), $$, n, extension)
-    end
   end
   
 end
