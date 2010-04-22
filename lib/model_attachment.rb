@@ -5,6 +5,9 @@
 #  Copyright 2010 Stephen Walker. All rights reserved.
 # 
 
+# TODO - Add exception handling and validation testing
+
+require 'tempfile'
 require 'model_attachment/upfile'
 require 'model_attachment/iostream'
 
@@ -34,7 +37,8 @@ module ModelAttachment
       write_inheritable_attribute(:attachment_options, options)
       
       # must be after save to get the id
-      before_save :save_attached_files
+      before_save :save_attributes
+      after_save :save_attached_files
       before_destroy :destroy_attached_files
       
     end
@@ -90,42 +94,39 @@ module ModelAttachment
       logger.info("[model_attachment] #{message}")
     end
     
+    def save_attributes
+      @temp_file = self.file_name
+      
+      # get original filename info and clean up for storage
+      ext  = File.extname(@temp_file.original_filename)
+      base = File.basename(@temp_file.original_filename, ext).strip.gsub(/[^A-Za-z\d\.\-_]+/, '_')
+      
+      # save attributes
+      self.file_name    = base + ext
+      self.content_type = @temp_file.content_type.strip
+      self.file_size    = @temp_file.size.to_i
+      self.updated_at   = Time.now
+      
+    end
+    
     # Does all the file processing, moves from temp, processes images, sets attributes
     def save_attached_files
       options = self.class.attachment_options
-      file    = self.file_name
-          
-      # get original filename info and clean up for storage
-      ext  = File.extname(file.original_filename)
-      base = File.basename(file.original_filename, ext).strip.gsub(/[^A-Za-z\d\.\-_]+/, '_')
       
-      log("Path: #{path} Basename: #{base} Extension: #{ext}")
+      log("Path: #{path} Basename: #{basename} Extension: #{extension}")
 
       # copy image to correct path
       FileUtils.mkdir_p(full_path)
       FileUtils.chmod(0755, full_path)
-      FileUtils.mv(file.path, full_path + base + ext)
-      
-      # save attributes
-      self.file_name    = base + ext
-      self.content_type = file.content_type.strip
-      self.file_size    = file.size.to_i
-      self.updated_at   = Time.now
-      
+      FileUtils.mv(@temp_file.path, full_path + basename + extension)
+
       # run any processing passed in on images
       process_images
       
       @dirty = true 
-      file.close
+      @temp_file.close if @temp_file.respond_to?(:close)
     end
-    
-    def instance_write(attr, value)
-      setter = :"#{attr}="
-      responds = self.respond_to?(setter)
-      self.instance_variable_set("@#{setter.to_s.chop}", value)
-      self.send(setter, value) if responds
-    end
-    
+        
     # run each processor on file
     def process_images
       if self.class.attachment_options[:types]
@@ -144,7 +145,7 @@ module ModelAttachment
     
     # create the path based on the template
     def interpolate(path, *args)
-      methods = ["domain", "folder", "document"]
+      methods = ["domain", "folder", "document", "version"]
       methods.reverse.inject( path.dup ) do |result, tag|
         result.gsub(/:#{tag}/) do |match|
           send( tag, *args )
@@ -171,8 +172,7 @@ module ModelAttachment
       if (self.class.attachment_options[:path]) 
         return "/system/" + interpolate(self.class.attachment_options[:path])
       else 
-        folder_name = self.name.downcase.strip.gsub(/[^A-Za-z\d\.\-_]+/, '_')
-        return "/system/" + folder_name + "/"
+        return "/system/" + sprintf("%04d", id) + "/"
       end
     end
     
@@ -230,6 +230,20 @@ module ModelAttachment
     end
   
   end
+  
+  # Due to how ImageMagick handles its image format conversion and how Tempfile
+  # handles its naming scheme, it is necessary to override how Tempfile makes
+  # its names so as to allow for file extensions. Idea taken from the comments
+  # on this blog post:
+  # http://marsorange.com/archives/of-mogrify-ruby-tempfile-dynamic-class-definitions
+  class Tempfile < ::Tempfile
+    # Replaces Tempfile's +make_tmpname+ with one that honors file extensions.
+    def make_tmpname(basename, n)
+      extension = File.extname(basename)
+      sprintf("%s,%d,%d%s", File.basename(basename, extension), $$, n, extension)
+    end
+  end
+  
 end
 
 # Set it up in our model

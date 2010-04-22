@@ -25,7 +25,7 @@ ActiveRecord::Base.establish_connection(:adapter => "sqlite3", :database => ":me
 $stdout = StringIO.new
 
 def setup_db
-  FileUtils.rm(RAILS_ROOT + "/test.log")
+  #FileUtils.rm(RAILS_ROOT + "/test.log")
   ActiveRecord::Base.logger = Logger.new(RAILS_ROOT + "/test.log")
   
   ActiveRecord::Schema.define(:version => 1) do
@@ -109,10 +109,10 @@ class ModelAttachmentTest < Test::Unit::TestCase
     assert_equal "test1.jpg", document.file_name
     assert_equal "image/jpeg", document.content_type
     
-    assert File.exists?(RAILS_ROOT + "/system/test/test1.jpg")
+    assert File.exists?(RAILS_ROOT + "/system/0001/test1.jpg")
     
     document.destroy
-    assert !File.exists?(RAILS_ROOT + "/system/test/test1.jpg")
+    assert !File.exists?(RAILS_ROOT + "/system/0001/test1.jpg")
   end
   
   def test_save_with_no_resize
