@@ -8,7 +8,7 @@ require 'model_attachment'
 desc 'Default: run unit tests.'
 task :default => [:clean, :test]
 
-desc 'Test the paperclip plugin.'
+desc 'Test the model_attachment plugin.'
 Rake::TestTask.new(:test) do |t|
   t.libs << 'lib' << 'profile'
   t.pattern = 'test/**/*_test.rb'
@@ -61,7 +61,7 @@ exclude_file_globs = ["test/s3.yml",
                       "test/tmp/*"]
 spec = Gem::Specification.new do |s| 
   s.name              = "model_attachment"
-  s.version           = Paperclip::VERSION
+  s.version           = ModelAttachment::VERSION
   s.author            = "Steve Walker"
   s.email             = "steve@blackboxweb.com"
   s.homepage          = "http://www.blackboxweb.com/projects/model_attachment"
