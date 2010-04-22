@@ -13,30 +13,11 @@ module ModelAttachment
   VERSION = "0.1"
   
   class << self
-    # Provides logging configuration
-    # * log: Turns logging on, default is true
-    def options
-      @options ||= {
-        log => true
-      }
-    end
     
     def included base #:nodoc:
       base.extend ClassMethods
     end
     
-    # Log a ActsAsAttachment specific message
-    def log(message)
-      logger.info("[model_attachment] #{message}") if logging?
-    end
-    
-    def logger #:nodoc:
-      ActiveRecord::Base.logger
-    end
-    
-    def logging? #:nodoc:
-      options[:log]
-    end
   end
   
   module ClassMethods
@@ -51,7 +32,8 @@ module ModelAttachment
       include InstanceMethods
        
       write_inheritable_attribute(:attachment_options, options)
-
+      
+      # must be after save to get the id
       before_save :save_attached_files
       before_destroy :destroy_attached_files
       
@@ -98,9 +80,15 @@ module ModelAttachment
       read_inheritable_attribute(:attachment_options)
     end
 
+
   end
   
   module InstanceMethods #:nodoc:
+    
+    # Log a ModelAttachment specific message
+    def log(message)
+      logger.info("[model_attachment] #{message}")
+    end
     
     # Does all the file processing, moves from temp, processes images, sets attributes
     def save_attached_files
@@ -131,16 +119,25 @@ module ModelAttachment
       file.close
     end
     
+    def instance_write(attr, value)
+      setter = :"#{attr}="
+      responds = self.respond_to?(setter)
+      self.instance_variable_set("@#{setter.to_s.chop}", value)
+      self.send(setter, value) if responds
+    end
+    
     # run each processor on file
     def process_images
-      self.class.attachment_options[:types].each do |name, value|
-        if content_type =~ /^image\//
-          command = value[:command]
-          old_filename = full_filename
-          new_filename = full_filename(name)
-          log("Create #{name} by running #{command} on #{old_filename}")
-          log("Created: #{new_filename}")
-          `#{command} #{old_filename} #{new_filename}`
+      if self.class.attachment_options[:types]
+        self.class.attachment_options[:types].each do |name, value|
+          if image?
+            command = value[:command]
+            old_filename = full_filename
+            new_filename = full_filename(name)
+            log("Create #{name} by running #{command} on #{old_filename}")
+            log("Created: #{new_filename}")
+            `#{command} #{old_filename} #{new_filename}`
+          end
         end
       end
     end
@@ -171,7 +168,12 @@ module ModelAttachment
     
     # returns the rails path of the file
     def path 
-      "/system/" + interpolate(self.class.attachment_options[:path])
+      if (self.class.attachment_options[:path]) 
+        return "/system/" + interpolate(self.class.attachment_options[:path])
+      else 
+        folder_name = self.name.downcase.strip.gsub(/[^A-Za-z\d\.\-_]+/, '_')
+        return "/system/" + folder_name + "/"
+      end
     end
     
     # returns the full system path of the file
@@ -184,6 +186,11 @@ module ModelAttachment
       full_path + filename(type)
     end
     
+    # decide whether or not this is an image
+    def image?
+      content_type =~ /^image\//
+    end
+    
     # removes any files associated with this instance
     def destroy_attached_files
       path = full_filename
@@ -193,10 +200,12 @@ module ModelAttachment
         FileUtils.rm(path) if File.exist?(path)
         
         # delete thumbnails if image
-        self.class.attachment_options[:types].each do |name, value|
-          if content_type =~ /^image\//
-            log("Deleting #{name}")
-            FileUtils.rm(full_filename(name)) if File.exists?(full_filename(name))
+        if self.class.attachment_options[:types]
+          self.class.attachment_options[:types].each do |name, value|
+            if image?
+              log("Deleting #{name}")
+              FileUtils.rm(full_filename(name)) if File.exists?(full_filename(name))
+            end
           end
         end
         
