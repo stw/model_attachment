@@ -32,7 +32,7 @@ end
 
 desc 'Update documentation on website'
 task :sync_docs => 'rdoc' do
-  #`rsync -ave ssh doc/ dev@dev.thoughtbot.com:/home/dev/www/dev.thoughtbot.com/paperclip`
+  `rsync -ave ssh doc/ steve@rsweb2:/var/sites/stephenwalker/shared/system/docs/model_attachment`
 end
 
 desc 'Clean up files.'

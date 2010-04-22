@@ -2,7 +2,7 @@
 #  model_attachment_test.rb
 #  
 #  Created by Stephen Walker on 2010-04-22.
-#  Copyright 2010 WalkerTek Interactive Marketing. All rights reserved.
+#  Copyright 2010 Stephen Walker. All rights reserved.
 # 
 
 require 'test/unit'
