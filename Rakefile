@@ -61,12 +61,13 @@ exclude_file_globs = ["test/s3.yml",
                       "test/tmp/*"]
 spec = Gem::Specification.new do |s| 
   s.name              = "model_attachment"
+  s.description       = "Simple file attachment for ActiveRecord models"
   s.version           = ModelAttachment::VERSION
   s.author            = "Steve Walker"
   s.email             = "steve@blackboxweb.com"
-  s.homepage          = "git@github.com:stw/model_attachment.git"
+  s.homepage          = "http://github.com/stw/model_attachment"
   s.platform          = Gem::Platform::RUBY
-  s.summary           = "File attachments as attributes for ActiveRecord"
+  s.summary           = "Attach files to ActiveRecord models and run commands on images"
   s.files             = FileList[include_file_globs].to_a - FileList[exclude_file_globs].to_a
   s.require_path      = "lib"
   s.test_files        = FileList["test/**/test_*.rb"].to_a

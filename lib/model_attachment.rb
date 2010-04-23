@@ -11,7 +11,7 @@ require 'model_attachment/upfile'
 
 # The base module that gets included in ActiveRecord::Base.
 module ModelAttachment
-  VERSION = "0.0.1"
+  VERSION = "0.0.2"
   
   class << self
     
