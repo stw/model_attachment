@@ -75,11 +75,8 @@ spec = Gem::Specification.new do |s|
   s.extra_rdoc_files  = FileList["README*"].to_a
   s.rdoc_options << '--line-numbers' << '--inline-source'
   s.requirements << "ImageMagick"
-  s.add_development_dependency 'shoulda'
-  s.add_development_dependency 'mocha'
   s.add_development_dependency 'sqlite3-ruby'
   s.add_development_dependency 'activerecord'
-  s.add_development_dependency 'activesupport'
 end
 
 desc "Print a list of the files to be put into the gem"
