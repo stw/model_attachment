@@ -96,6 +96,8 @@ module ModelAttachment
     def save_attributes
       @temp_file = self.file_name
       
+      return if @temp_file.nil? or @temp_file == ""
+      
       # get original filename info and clean up for storage
       ext  = File.extname(@temp_file.original_filename)
       base = File.basename(@temp_file.original_filename, ext).strip.gsub(/[^A-Za-z\d\.\-_]+/, '_')
@@ -111,6 +113,7 @@ module ModelAttachment
     # Does all the file processing, moves from temp, processes images
     def save_attached_files
       options = self.class.attachment_options
+      return if @temp_file.nil? or @temp_file == ""
       
       log("Path: #{path} Basename: #{basename} Extension: #{extension}")
 
