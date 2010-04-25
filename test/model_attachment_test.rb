@@ -31,6 +31,7 @@ def setup_db
   ActiveRecord::Schema.define(:version => 1) do
     create_table :documents do |t|
       t.string :name
+      t.string :bucket
       t.string :file_name
       t.string :content_type
       t.integer :file_size
@@ -72,6 +73,11 @@ class DocumentWithResize < Document
     :types => {
       :small => { :command => 'convert -geometry 100x100' } 
     }
+end
+
+class DocumentWithAWS < Document
+  has_attachment :path => "/:domain/:folder/:document/", 
+    :aws => File.join(File.dirname(__FILE__), "amazon.yml")
 end
 
 class ModelAttachmentTest < Test::Unit::TestCase
@@ -149,5 +155,22 @@ class ModelAttachmentTest < Test::Unit::TestCase
     assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/test2_small.jpg")  
   end
 
+  def test_save_with_aws
+    FileUtils.cp(RAILS_ROOT + "/assets/test.jpg", RAILS_ROOT + "/assets/test3.jpg")
+    file = File.open(RAILS_ROOT + "/assets/test3.jpg")
+    
+    document = DocumentWithAWS.new(:name => "Test", :file_name => file)
+    document.save
+    
+    assert_equal "test3.jpg", document.file_name
+    assert_equal "image/jpeg", document.content_type
+    
+    document.aws_connect
+    document.move_to_amazon
+    #document.save
+    
+    assert_equal 'globalfolders-us-east', document.bucket
+    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/test3.jpg")
+  end
 end
 

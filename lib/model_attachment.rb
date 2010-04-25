@@ -7,6 +7,8 @@
 
 # TODO - Add exception handling and validation testing
 
+require 'rubygems'
+require 'yaml'
 require 'model_attachment/upfile'
 
 # The base module that gets included in ActiveRecord::Base.
@@ -29,11 +31,35 @@ module ModelAttachment
     #                 :small => { :command => 'convert -geometry 100x100' },
     #                 :large => { :command => 'convert -geometry 500x500' }
     #            }
+    # * +aws+: the path to the aws config file or :default for rails config/amazon.yml
+    #          access_key_id:
+    #          secret_access_key: 
     def has_attachment(options = {})
       include InstanceMethods
-       
-      write_inheritable_attribute(:attachment_options, options)
       
+      if options[:aws]
+        begin
+          require 'aws/s3'
+        rescue LoadError => e
+          e.messages << "You man need to install the aws-s3 gem"
+          raise e
+        end
+      end
+    
+      if options[:aws] == :default
+        config_file = File.join(RAILS_ROOT, "config", "amazon.yml")
+        if File.exist?(config_file)
+          options[:aws] = config_file
+          include AmazonInstanceMethods
+        else
+          raise("You must provide a config/amazon.yml setup file")
+        end
+      elsif !options[:aws].nil? && File.exist?(options[:aws])
+        include AmazonInstanceMethods
+      end
+      
+      write_inheritable_attribute(:attachment_options, options)
+        
       # must be after save to get the id
       before_save :save_attributes
       after_save :save_attached_files
@@ -92,11 +118,12 @@ module ModelAttachment
       logger.info("[model_attachment] #{message}")
     end
     
+    attr_accessor :temp_file
+    
     # save the correct attribute info before the save
     def save_attributes
+      return if file_name.nil? or file_name == "" or file_name.class.to_s == "String"
       @temp_file = self.file_name
-      
-      return if @temp_file.nil? or @temp_file == ""
       
       # get original filename info and clean up for storage
       ext  = File.extname(@temp_file.original_filename)
@@ -112,9 +139,9 @@ module ModelAttachment
     
     # Does all the file processing, moves from temp, processes images
     def save_attached_files
-      options = self.class.attachment_options
       return if @temp_file.nil? or @temp_file == ""
-      
+      options = self.class.attachment_options
+            
       log("Path: #{path} Basename: #{basename} Extension: #{extension}")
 
       # copy image to correct path
@@ -232,7 +259,72 @@ module ModelAttachment
     end
   
   end
-  
+
+  module AmazonInstanceMethods
+    
+    def default_bucket 
+      'globalfolders-us-east'
+    end
+    
+    def aws_connect
+      config = YAML.load_file(self.class.attachment_options[:aws])
+      log("Connect to Amazon")
+      
+      begin 
+        AWS::S3::Base.establish_connection!(
+          :access_key_id     => config['access_key_id'],
+          :secret_access_key => config['secret_access_key']
+        )
+      rescue AWS::S3::ResponseError => error
+        log("Could not connect to amazon: #{error.message}")
+      end
+    end
+    
+    def move_to_amazon
+      begin
+        AWS::S3::S3Object.store(path + file_name, open(full_filename), default_bucket, :content_type => content_type)
+      rescue AWS::S3::ResponseError => error
+        log("Store Object Failed: #{error.message}")
+      end
+      
+      begin 
+        if AWS::S3::S3Object.exists?(path + file_name, default_bucket)
+          FileUtils.rm(full_filename)
+        end
+      rescue AWS::S3::ResponseError => error
+        log("Could not check objects existence: #{error.message}")
+      rescue StandardError => error
+        log("Removing file failed: #{error.message}.")
+      end
+    end
+    
+    def move_to_filesystem
+      begin 
+        open(full_filename, 'w') do |file|
+          AWS::S3::S3Object.stream(path + file_name, default_bucket) do |chunk|
+            file.write chunk
+          end
+        end
+      rescue AWS::S3::ResponseError => error
+        log("Copying File to local filesystem failed: #{error.message}")
+      end
+      
+      if File.exist?(full_filename)
+        remove_from_amazon
+      end
+    end
+
+    def remove_from_amazon
+      begin
+        object = AWS::S3::S3Object.find(path + file_name, default_bucket)
+        object.delete
+        bucket = nil
+      rescue AWS::S3::ResponseError => error
+        log("Removing file from amazon failed: #{error.message}")
+      end
+    end
+    
+  end
 end
 
 # Set it up in our model
