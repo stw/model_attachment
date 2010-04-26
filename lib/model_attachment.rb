@@ -10,10 +10,11 @@
 require 'rubygems'
 require 'yaml'
 require 'model_attachment/upfile'
+require 'model_attachment/amazon'
 
 # The base module that gets included in ActiveRecord::Base.
 module ModelAttachment
-  VERSION = "0.0.2"
+  VERSION = "0.0.3"
   
   class << self
 
@@ -108,15 +109,49 @@ module ModelAttachment
       read_inheritable_attribute(:attachment_options)
     end
 
-
   end
   
   module InstanceMethods #:nodoc:
     
-    # Log a ModelAttachment specific message
-    def log(message)
-      logger.info("[model_attachment] #{message}")
+    # returns the rails path of the file
+    def path 
+      if (self.class.attachment_options[:path]) 
+        return "/system" + interpolate(self.class.attachment_options[:path])
+      else 
+        return "/system/" + sprintf("%04d", id) + "/"
+      end
     end
+    
+    # returns the full system path of the file
+    def full_path
+      RAILS_ROOT + path
+    end
+    
+    # returns the filename, including any type modifier
+    def filename(type = "")
+      type      = "_#{type}" if type != ""
+      "#{basename}#{type}#{extension}"
+    end
+    
+    def extension #:nodoc:
+      File.extname(file_name)
+    end
+    
+    def basename #:nodoc:
+      File.basename(file_name, extension)
+    end
+     
+    # returns the full system path/filename
+    def full_filename(type = "")
+      full_path + filename(type)
+    end
+    
+    # decide whether or not this is an image
+    def image?
+      content_type =~ /^image\//
+    end
+    
+    private
     
     # save the correct attribute info before the save
     def save_attributes
@@ -181,44 +216,6 @@ module ModelAttachment
       end
     end
     
-    # returns the filename, including any type modifier
-    def filename(type = "")
-      type      = "_#{type}" if type != ""
-      "#{basename}#{type}#{extension}"
-    end
-    
-    def extension #:nodoc:
-      File.extname(file_name)
-    end
-    
-    def basename #:nodoc:
-      File.basename(file_name, extension)
-    end
-    
-    # returns the rails path of the file
-    def path 
-      if (self.class.attachment_options[:path]) 
-        return "/system" + interpolate(self.class.attachment_options[:path])
-      else 
-        return "/system/" + sprintf("%04d", id) + "/"
-      end
-    end
-    
-    # returns the full system path of the file
-    def full_path
-      RAILS_ROOT + path
-    end
-    
-    # returns the full system path/filename
-    def full_filename(type = "")
-      full_path + filename(type)
-    end
-    
-    # decide whether or not this is an image
-    def image?
-      content_type =~ /^image\//
-    end
-    
     # removes any files associated with this instance
     def destroy_attached_files
       path = full_filename
@@ -253,94 +250,17 @@ module ModelAttachment
       end 
     end
     
+    # Log a ModelAttachment specific message
+    def log(message)
+      logger.info("[model_attachment] #{message}")
+    end
+  
     def dirty? #:nodoc:
       @dirty
     end
+    
+  end
   
-  end
-
-  module AmazonInstanceMethods
-    def aws_key
-      (path + file_name).gsub!(/^\//,'')
-    end
-    
-    def default_bucket 
-      'globalfolders-us-east'
-    end
-    
-    def aws_connect
-      config = YAML.load_file(self.class.attachment_options[:aws])
-      log("Connect to Amazon")
-      
-      begin 
-        AWS::S3::Base.establish_connection!(
-          :access_key_id     => config['access_key_id'],
-          :secret_access_key => config['secret_access_key']
-        )
-      rescue AWS::S3::ResponseError => error
-        log("Could not connect to amazon: #{error.message}")
-      end
-    end
-    
-    def move_to_amazon
-      aws_connect
-      log("Move #{aws_key} to Amazon.")
-      begin
-        AWS::S3::S3Object.store(aws_key, open(full_filename), default_bucket, :content_type => content_type)
-        self.bucket = default_bucket
-        @dirty = true
-        save!
-      rescue AWS::S3::ResponseError => error
-        log("Store Object Failed: #{error.message}")
-      rescue StandardError => e
-        log("Move to Amazon Failed: #{e.message}")
-      end
-      
-      begin 
-        if AWS::S3::S3Object.exists?(path + file_name, default_bucket)
-          log("Remove Filename #{full_filename}")
-          FileUtils.rm(full_filename)
-        end
-      rescue AWS::S3::ResponseError => error
-        log("Could not check objects existence: #{error.message}")
-      rescue StandardError => error
-        log("Removing file failed: #{error.message}.")
-      end
-    end
-    
-    def move_to_filesystem
-      aws_connect
-      begin 
-        open(full_filename, 'w') do |file|
-          AWS::S3::S3Object.stream(path + file_name, default_bucket) do |chunk|
-            file.write chunk
-          end
-        end
-      rescue AWS::S3::ResponseError => error
-        log("Copying File to local filesystem failed: #{error.message}")
-      end
-      
-      if File.exist?(full_filename)
-        remove_from_amazon
-      end
-    end
-
-    def remove_from_amazon
-      begin
-        log("Removing #{aws_key} from Amazon")
-        object = AWS::S3::S3Object.find(aws_key, default_bucket)
-        object.delete
-        self.bucket = nil
-        @dirty = true
-        save!
-      rescue AWS::S3::ResponseError => error
-        log("Removing file from amazon failed: #{error.message}")
-      rescue StandardError => e
-        log("Failed remove from Amazon: #{e.message}")
-      end
-    end
-    
-  end
 end
 
 # Set it up in our model

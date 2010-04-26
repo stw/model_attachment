@@ -169,7 +169,7 @@ class ModelAttachmentTest < Test::Unit::TestCase
     
     document.move_to_amazon
     
-    assert_equal 'globalfolders-us-east', document.bucket
+    assert_equal 'globalfolders', document.bucket
     assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/test3.jpg")
     
     document.move_to_filesystem
