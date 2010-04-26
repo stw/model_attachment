@@ -14,7 +14,7 @@ require 'model_attachment/amazon'
 
 # The base module that gets included in ActiveRecord::Base.
 module ModelAttachment
-  VERSION = "0.0.4"
+  VERSION = "0.0.5"
   
   class << self
     
@@ -117,6 +117,11 @@ module ModelAttachment
   module InstanceMethods #:nodoc:
     
     # return the url based on location
+    # * +proto+: set the protocol, defaults to http
+    # * +port+: sets the port if required
+    # * +server_name+: sets the server name, defaults to localhost
+    # * +path+: sets the path, defaults to /documents/send
+    # * +type+: sets the type, types come from the has_attachment method, ex. small, large
     def url(options = {})
       proto       = options[:proto]        || "http"
       port        = options[:port]
@@ -145,6 +150,7 @@ module ModelAttachment
     end
     
     # returns the filename, including any type modifier
+    # +type+: type from has_attachment, ex. small, large
     def filename(type = "")
       type      = "_#{type}" if type != ""
       "#{basename}#{type}#{extension}"
@@ -159,6 +165,7 @@ module ModelAttachment
     end
      
     # returns the full system path/filename
+    # +type+: type from has_attachment, ex. small, large
     def full_filename(type = "")
       full_path + filename(type)
     end
@@ -241,13 +248,11 @@ module ModelAttachment
     
     # removes any files associated with this instance
     def destroy_attached_files
-      path = full_filename
-      
       begin
         
         if bucket.nil?
-          log("Deleting #{path}")
-          FileUtils.rm(path) if File.exist?(path)
+          log("Deleting #{full_filename}")
+          FileUtils.rm(full_filename) if File.exist?(full_filename)
         
           # delete thumbnails if image
           process_image_types do |name, value|
@@ -264,8 +269,8 @@ module ModelAttachment
       end
       begin
         while(true)
-          path = File.dirname(path)
-          FileUtils.rmdir(path)
+          dir_path = File.dirname(full_filename)
+          FileUtils.rmdir(dir_path)
         end
       rescue Errno::EEXIST, Errno::ENOTEMPTY, Errno::ENOENT, Errno::EINVAL, Errno::ENOTDIR
         # Stop trying to remove parent directories
@@ -280,6 +285,7 @@ module ModelAttachment
     end
     
     # Log a ModelAttachment specific message
+    # +message+: message to be logged if logging? true
     def log(message)
       logger.info("[model_attachment] #{message}") if logging?
     end

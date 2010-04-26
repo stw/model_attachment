@@ -1,0 +1,12 @@
+README.rdoc
+LICENSE
+Rakefile
+init.rb
+Manifest.txt
+lib/model_attachment
+lib/model_attachment/amazon.rb
+lib/model_attachment/upfile.rb
+lib/model_attachment.rb
+test/assets
+test/assets/test.jpg
+test/model_attachment_test.rb

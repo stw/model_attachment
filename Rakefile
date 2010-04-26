@@ -49,16 +49,12 @@ include_file_globs = ["README*",
                       "LICENSE",
                       "Rakefile",
                       "init.rb",
-                      "{generators,lib,tasks,test,shoulda_macros}/**/*"]
-exclude_file_globs = ["test/s3.yml",
-                      "test/debug.log",
-                      "test/model_attachment.db",
-                      "test/doc",
-                      "test/doc/*",
-                      "test/pkg",
-                      "test/pkg/*",
-                      "test/tmp",
-                      "test/tmp/*"]
+                      "Manifest.txt",
+                      "{generators,lib,tasks,test}/**/*"]
+
+exclude_file_globs = ["test/amazon.yml",
+                      "test/test.log"]
+
 spec = Gem::Specification.new do |s| 
   s.name              = "model_attachment"
   s.description       = "Simple file attachment for ActiveRecord models"

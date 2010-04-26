@@ -2,6 +2,7 @@ module ModelAttachment
   module AmazonInstanceMethods
     
     # returns the aws url
+    # +type+: type passed to has_attachment, ex. small, large
     def aws_url(type = "")
       begin
         return AWS::S3::S3Object.find(aws_key(type), default_bucket).url
@@ -11,11 +12,13 @@ module ModelAttachment
     end
     
     # sets the default aws bucket
+    # +current_bucket+: set the current bucket, default 'globalfolders'
     def default_bucket(current_bucket = 'globalfolders')
       current_bucket
     end
 
     # creates the aws_key
+    # +type+: type passed to has_attachment, ex. small, large
     def aws_key(type = "")
       file = (type.nil? || type == "" ? filename : basename + "_" + type + extension)
       (path + file).gsub!(/^\//,'')

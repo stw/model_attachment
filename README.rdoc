@@ -2,20 +2,20 @@
 
 ModelAttachment is intended as an simple file attachment library for ActiveRecord. This is experimental software, the interface is subject to change and we are still adding tests.  Use with caution only in development.
 
-See the documentation for +has_attachement+ in ModelAttachment::ClassMethods for more detailed options.
+See the documentation for +has_attachement+ in ModelAttachment::ClassMethods for slightly more detailed options.
 
 ==Quick Start
 
 In your model:
 
   class Document < ActiveRecord::Base
-    has_attachment { 
-      :path => ":domain/:folder/:document/",
+    has_attachment :path => ":domain/:folder/:document/:version/",
       :types => {
         :small => { :command => 'convert -geometry 100x100' },
         :large => { :command => 'convert -geometry 500x500' }
-      } 
-    }
+      },
+      :aws => :default,
+      :logging => true
     
     def domain
       # returns string representing the domain
@@ -28,22 +28,30 @@ In your model:
     def document
       # returns string representing document
     end
+    
+    def version
+      # returns document version number
+    end
   end
 
 In your migrations:
 
   class AddAttachmentColumnsToDocument < ActiveRecord::Migration
     def self.up
+      add_column :documents, :bucket,       :string # if you are using aws
       add_column :documents, :file_name,    :string
       add_column :documents, :content_type, :string
       add_column :documents, :file_size,    :integer
+      add_column :documents, :version,      :integer
       add_column :documents, :updated_at,   :datetime
     end
 
     def self.down
+      remove_column :documents, :bucket
       remove_column :documents, :file_name
       remove_column :documents, :content_type
       remove_column :documents, :file_size
+      remove_column :documents, :version
       remove_column :documents, :updated_at
     end
   end
@@ -60,7 +68,7 @@ In your controller:
     @document = Document.create( params[:user] )
   end
   
-  def send_file
+  def send
     # check permissions
     @document = Document.find(params[:id])
     
@@ -70,7 +78,7 @@ In your controller:
   
 In your show view:
 
-  <%= link_to "Download", :controller => 'documents', :action => 'send_file', :id => @document.id, :type => :large %>
+  <%= link_to "Download", @document.url(:large) %>
 
 ==Usage
 
@@ -78,9 +86,19 @@ The basics of model_attachment are quite simple: Declare that your model has an 
 
 Attachments can be validated with ModelAttachment's validation methods, validates_attachment_presence and validates_attachment_size.
 
+Attachments can be moved to amazon with @document.move_to_amazon and from amazon with @document.move_to_filesystem.
+
+You can use @document.url(:type) to get the url to the file.
+
 ==Storage
 
-The files that are assigned as attachments are, by default, placed in the directory specified by the :path option to has_attachment. By default, this location is ":rails_root/system/:domain/:folder/:document/:basename.:extention".
+The files that are assigned as attachments are, by default, placed in the directory specified by the :path option to has_attachment. By default, this location is ":rails_root/system/:document/:basename.:extention".
+
+Options currently accepted and evaluated: 
+:domain
+:folder
+:document
+:version
 
 ==Post Processing
 
