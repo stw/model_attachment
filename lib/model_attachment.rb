@@ -14,7 +14,7 @@ require 'model_attachment/amazon'
 
 # The base module that gets included in ActiveRecord::Base.
 module ModelAttachment
-  VERSION = "0.0.3"
+  VERSION = "0.0.4"
   
   class << self
     
