@@ -17,7 +17,7 @@ module ModelAttachment
   VERSION = "0.0.3"
   
   class << self
-
+    
     def included base #:nodoc:
       base.extend ClassMethods
     end
@@ -35,6 +35,7 @@ module ModelAttachment
     # * +aws+: the path to the aws config file or :default for rails config/amazon.yml
     #          access_key_id:
     #          secret_access_key: 
+    # * +logging+: set to true to see logging
     def has_attachment(options = {})
       include InstanceMethods
       
@@ -61,8 +62,10 @@ module ModelAttachment
       
       write_inheritable_attribute(:attachment_options, options)
         
-      # must be after save to get the id
+      # must be before the save to save the attributes
       before_save :save_attributes
+      
+      # must be after save to get the id for the path
       after_save :save_attached_files
       before_destroy :destroy_attached_files
       
@@ -108,10 +111,24 @@ module ModelAttachment
     def attachment_options
       read_inheritable_attribute(:attachment_options)
     end
-
+    
   end
   
   module InstanceMethods #:nodoc:
+    
+    # return the url based on location
+    def url(options = {})
+      proto       = options[:proto]        || "http"
+      port        = options[:port]
+      server_name = options[:server_name]  || "localhost"
+      url_path    = options[:path]         || "/documents/send"
+      type        = options[:type]
+      server_name += ":" + port if port
+      
+      url = (bucket.nil? ? "#{proto}://#{server_name}#{url_path}?id=#{id}" : aws_url(type))
+      log("Providing URL: #{url}")
+      return url
+    end
     
     # returns the rails path of the file
     def path 
@@ -153,6 +170,16 @@ module ModelAttachment
     
     private
     
+    def process_image_types #:nodoc:
+      if self.class.attachment_options[:types]
+        self.class.attachment_options[:types].each do |name, value|
+          if image?
+            yield(name, value)
+          end
+        end
+      end
+    end
+    
     # save the correct attribute info before the save
     def save_attributes
       return if file_name.class.to_s == "String"
@@ -192,17 +219,13 @@ module ModelAttachment
         
     # run each processor on file
     def process_images
-      if self.class.attachment_options[:types]
-        self.class.attachment_options[:types].each do |name, value|
-          if image?
-            command = value[:command]
-            old_filename = full_filename
-            new_filename = full_filename(name)
-            log("Create #{name} by running #{command} on #{old_filename}")
-            log("Created: #{new_filename}")
-            `#{command} #{old_filename} #{new_filename}`
-          end
-        end
+      process_image_types do |name, value|
+        command = value[:command]
+        old_filename = full_filename
+        new_filename = full_filename(name)
+        log("Create #{name} by running #{command} on #{old_filename}")
+        log("Created: #{new_filename}")
+        `#{command} #{old_filename} #{new_filename}`
       end
     end
     
@@ -221,17 +244,19 @@ module ModelAttachment
       path = full_filename
       
       begin
-        log("Deleting #{path}")
-        FileUtils.rm(path) if File.exist?(path)
         
-        # delete thumbnails if image
-        if self.class.attachment_options[:types]
-          self.class.attachment_options[:types].each do |name, value|
-            if image?
-              log("Deleting #{name}")
-              FileUtils.rm(full_filename(name)) if File.exists?(full_filename(name))
-            end
+        if bucket.nil?
+          log("Deleting #{path}")
+          FileUtils.rm(path) if File.exist?(path)
+        
+          # delete thumbnails if image
+          process_image_types do |name, value|
+            log("Deleting #{name}")
+            FileUtils.rm(full_filename(name)) if File.exists?(full_filename(name))
           end
+        
+        else 
+          remove_from_amazon
         end
         
       rescue Errno::ENOENT => e
@@ -250,9 +275,13 @@ module ModelAttachment
       end 
     end
     
+    def logging? #:nodoc:
+      self.class.attachment_options[:logging]
+    end
+    
     # Log a ModelAttachment specific message
     def log(message)
-      logger.info("[model_attachment] #{message}")
+      logger.info("[model_attachment] #{message}") if logging?
     end
   
     def dirty? #:nodoc:

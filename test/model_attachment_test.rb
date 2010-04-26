@@ -58,6 +58,9 @@ class Document < ActiveRecord::Base
   def document
     "1"
   end
+  def version
+    "0"
+  end
 end
 
 class DocumentDefault < Document
@@ -65,19 +68,23 @@ class DocumentDefault < Document
 end
 
 class DocumentNoResize < Document
-  has_attachment :path => "/:domain/:folder/:document/"
+  has_attachment :path => "/:domain/:folder/:document/:version/"
 end
 
 class DocumentWithResize < Document
-  has_attachment :path => "/:domain/:folder/:document/",
+  has_attachment :path => "/:domain/:folder/:document/:version/",
     :types => {
       :small => { :command => '/opt/local/bin/convert -geometry 100x100' } 
     }
 end
 
 class DocumentWithAWS < Document
-  has_attachment :path => "/:domain/:folder/:document/", 
-    :aws => File.join(File.dirname(__FILE__), "amazon.yml")
+  has_attachment :path => "/:domain/:folder/:document/:version/", 
+    :aws => File.join(File.dirname(__FILE__), "amazon.yml"),
+    :types => {
+      :small => { :command => '/opt/local/bin/convert -geometry 100x100' } 
+    },
+    :logging => true
 end
 
 class ModelAttachmentTest < Test::Unit::TestCase
@@ -131,10 +138,10 @@ class ModelAttachmentTest < Test::Unit::TestCase
     assert_equal document.file_name, "test1.jpg"
     assert_equal document.content_type, "image/jpeg"
     
-    assert File.exists?(RAILS_ROOT + "/system/bbs/1/1/test1.jpg")
+    assert File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test1.jpg")
     
     document.destroy
-    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/test1.jpg")
+    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test1.jpg")
   end
   
   def test_save_with_resize
@@ -147,12 +154,12 @@ class ModelAttachmentTest < Test::Unit::TestCase
     assert_equal document.file_name, "test2.jpg"
     assert_equal document.content_type, "image/jpeg"
     
-    assert File.exists?(RAILS_ROOT + "/system/bbs/1/1/test2.jpg")
-    assert File.exists?(RAILS_ROOT + "/system/bbs/1/1/test2_small.jpg")
+    assert File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test2.jpg")
+    assert File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test2_small.jpg")
     
     document.destroy
-    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/test2.jpg")
-    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/test2_small.jpg")  
+    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test2.jpg")
+    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test2_small.jpg")  
   end
 
   def test_save_with_aws
@@ -161,22 +168,30 @@ class ModelAttachmentTest < Test::Unit::TestCase
     
     document = DocumentWithAWS.new(:name => "Test", :file_name => file)
     document.save
-    assert File.exist?(RAILS_ROOT + "/system/bbs/1/1/test3.jpg")
+    assert File.exist?(RAILS_ROOT + "/system/bbs/1/1/0/test3.jpg")
     
+    assert_equal "http://localhost:3000/documents/send?id=1", document.url(:port => "3000")
     assert_equal "test3.jpg", document.file_name
     assert_equal String, document.file_name.class
     assert_equal "image/jpeg", document.content_type
     
     document.move_to_amazon
     
+    assert_match /https:\/\/s3.amazonaws.com\/globalfolders\/system\/bbs\/1\/1\/0\/test3\.jpg/, document.url
+    assert_match /https:\/\/s3.amazonaws.com\/globalfolders\/system\/bbs\/1\/1\/0\/test3_small\.jpg/, document.url(:type => "small")
+    
     assert_equal 'globalfolders', document.bucket
-    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/test3.jpg")
+    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test3.jpg")
+    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test3_small.jpg")
     
     document.move_to_filesystem
-    assert File.exists?(RAILS_ROOT + "/system/bbs/1/1/test3.jpg")
+    
+    assert File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test3.jpg")
+    assert File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test3_small.jpg")
     
     document.destroy
-    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/test3.jpg")
+    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test3.jpg")
+    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test3_small.jpg")
   end
 end
 
