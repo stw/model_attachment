@@ -16,7 +16,7 @@ module ModelAttachment
   VERSION = "0.0.2"
   
   class << self
-    
+
     def included base #:nodoc:
       base.extend ClassMethods
     end
@@ -118,11 +118,9 @@ module ModelAttachment
       logger.info("[model_attachment] #{message}")
     end
     
-    attr_accessor :temp_file
-    
     # save the correct attribute info before the save
     def save_attributes
-      return if file_name.nil? or file_name == "" or file_name.class.to_s == "String"
+      return if file_name.class.to_s == "String"
       @temp_file = self.file_name
       
       # get original filename info and clean up for storage
@@ -154,6 +152,7 @@ module ModelAttachment
       
       @dirty = true 
       @temp_file.close if @temp_file.respond_to?(:close)
+      @temp_file = nil
     end
         
     # run each processor on file
@@ -199,7 +198,7 @@ module ModelAttachment
     # returns the rails path of the file
     def path 
       if (self.class.attachment_options[:path]) 
-        return "/system/" + interpolate(self.class.attachment_options[:path])
+        return "/system" + interpolate(self.class.attachment_options[:path])
       else 
         return "/system/" + sprintf("%04d", id) + "/"
       end
@@ -261,6 +260,9 @@ module ModelAttachment
   end
 
   module AmazonInstanceMethods
+    def aws_key
+      (path + file_name).gsub!(/^\//,'')
+    end
     
     def default_bucket 
       'globalfolders-us-east'
@@ -281,14 +283,22 @@ module ModelAttachment
     end
     
     def move_to_amazon
+      aws_connect
+      log("Move #{aws_key} to Amazon.")
       begin
-        AWS::S3::S3Object.store(path + file_name, open(full_filename), default_bucket, :content_type => content_type)
+        AWS::S3::S3Object.store(aws_key, open(full_filename), default_bucket, :content_type => content_type)
+        self.bucket = default_bucket
+        @dirty = true
+        save!
       rescue AWS::S3::ResponseError => error
         log("Store Object Failed: #{error.message}")
+      rescue StandardError => e
+        log("Move to Amazon Failed: #{e.message}")
       end
       
       begin 
         if AWS::S3::S3Object.exists?(path + file_name, default_bucket)
+          log("Remove Filename #{full_filename}")
           FileUtils.rm(full_filename)
         end
       rescue AWS::S3::ResponseError => error
@@ -299,6 +309,7 @@ module ModelAttachment
     end
     
     def move_to_filesystem
+      aws_connect
       begin 
         open(full_filename, 'w') do |file|
           AWS::S3::S3Object.stream(path + file_name, default_bucket) do |chunk|
@@ -316,11 +327,16 @@ module ModelAttachment
 
     def remove_from_amazon
       begin
-        object = AWS::S3::S3Object.find(path + file_name, default_bucket)
+        log("Removing #{aws_key} from Amazon")
+        object = AWS::S3::S3Object.find(aws_key, default_bucket)
         object.delete
-        bucket = nil
+        self.bucket = nil
+        @dirty = true
+        save!
       rescue AWS::S3::ResponseError => error
         log("Removing file from amazon failed: #{error.message}")
+      rescue StandardError => e
+        log("Failed remove from Amazon: #{e.message}")
       end
     end
     

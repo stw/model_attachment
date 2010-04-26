@@ -71,7 +71,7 @@ end
 class DocumentWithResize < Document
   has_attachment :path => "/:domain/:folder/:document/",
     :types => {
-      :small => { :command => 'convert -geometry 100x100' } 
+      :small => { :command => '/opt/local/bin/convert -geometry 100x100' } 
     }
 end
 
@@ -161,15 +161,21 @@ class ModelAttachmentTest < Test::Unit::TestCase
     
     document = DocumentWithAWS.new(:name => "Test", :file_name => file)
     document.save
+    assert File.exist?(RAILS_ROOT + "/system/bbs/1/1/test3.jpg")
     
     assert_equal "test3.jpg", document.file_name
+    assert_equal String, document.file_name.class
     assert_equal "image/jpeg", document.content_type
     
-    document.aws_connect
     document.move_to_amazon
-    #document.save
     
     assert_equal 'globalfolders-us-east', document.bucket
+    assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/test3.jpg")
+    
+    document.move_to_filesystem
+    assert File.exists?(RAILS_ROOT + "/system/bbs/1/1/test3.jpg")
+    
+    document.destroy
     assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/test3.jpg")
   end
 end
