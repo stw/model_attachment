@@ -189,7 +189,7 @@ module ModelAttachment
     
     # save the correct attribute info before the save
     def save_attributes
-      return if file_name.class.to_s == "String"
+      return if file_name.nil? || file_name.class.to_s == "String"
       @temp_file = self.file_name
       
       # get original filename info and clean up for storage
