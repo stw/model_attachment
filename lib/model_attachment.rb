@@ -130,23 +130,39 @@ module ModelAttachment
       url_path    = options[:path]         || "/#{self.class.to_s.downcase.pluralize}/deliver/"
       type        = options[:type]
       server_name += ":" + port.to_s if port
+      type_string = "?type=#{type}" if type
       
       unless self.class.attachment_options[:aws]
         bucket = nil
       end
       
-      url = (!bucket.nil? ? aws_url(type) : "#{proto}://#{server_name}#{url_path}#{id}")
+      # if files are public, serve public url
+      if public?
+        url_path = path.gsub(/^\/public(.*)/, '\1')
+        type_string = "_#{type}" if type
+        url = "#{proto}://#{server_name}#{url_path}#{basename}#{type_string}#{extension}"
+      elsif !bucket.nil?
+        # if bucket is set, then use aws url
+        aws_url(type)
+      else
+        # otherwise use private url with deliver
+        url = "#{proto}://#{server_name}#{url_path}#{id}#{type_string}"
+      end
       
       log("Providing URL: #{url}")
       return url
     end
     
+    def public?
+      (path =~ /^\/public/)
+    end
+    
     # returns the rails path of the file
     def path 
       if (self.class.attachment_options[:path]) 
-        return "/system" + interpolate(self.class.attachment_options[:path])
+        return interpolate(self.class.attachment_options[:path])
       else 
-        return "/system/" + sprintf("%04d", id) + "/"
+        return "/public/#{self.class.to_s.downcase.pluralize}/" + sprintf("%04d", id) + "/"
       end
     end
     
@@ -179,6 +195,17 @@ module ModelAttachment
     # decide whether or not this is an image
     def image?
       content_type =~ /^image\//
+    end
+    
+    # create the path based on the template
+    def interpolate(path, *args)
+      #methods = ["domain", "folder", "document", "version", "user", "account"]
+      self.class.instance_methods(false).sort.reverse.inject( path.dup ) do |result, tag|
+        #$stderr.puts("Result: #{result} Tag: #{tag}")
+        result.gsub(/:#{tag}/) do |match|
+          send( tag, *args )
+        end
+      end
     end
     
     private
@@ -239,16 +266,6 @@ module ModelAttachment
         log("Create #{name} by running #{command} on #{old_filename}")
         log("Created: #{new_filename}")
         `#{command} #{old_filename} #{new_filename}`
-      end
-    end
-    
-    # create the path based on the template
-    def interpolate(path, *args)
-      #methods = ["domain", "folder", "document", "version", "user", "account"]
-      self.class.instance_methods(false).sort.reverse.inject( path.dup ) do |result, tag|
-        result.gsub(/:#{tag}/) do |match|
-          send( tag, *args )
-        end
       end
     end
     
