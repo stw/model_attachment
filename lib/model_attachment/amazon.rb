@@ -26,12 +26,12 @@ module ModelAttachment
       
     # connect to aws, uses access_key_id and secret_access_key in config/amazon.yml
     def aws_connect
+      log("aws_connect")
       return if AWS::S3::Base.connected?
     
       begin
         config = YAML.load_file(self.class.attachment_options[:aws]) 
         if config
-          log("Connect to Amazon")
           AWS::S3::Base.establish_connection!(
             :access_key_id     => config['access_key_id'],
             :secret_access_key => config['secret_access_key'],
@@ -48,9 +48,9 @@ module ModelAttachment
   
     # moves file to amazon along with modified images, removes local images once object existence is confirmed
     def move_to_amazon
+      log("Move #{aws_key} to Amazon.")
       aws_connect
       
-      log("Move #{aws_key} to Amazon.")
       begin
         AWS::S3::S3Object.store(aws_key, open(full_filename), default_bucket, :content_type => content_type)
         

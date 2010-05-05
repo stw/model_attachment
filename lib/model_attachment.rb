@@ -14,7 +14,7 @@ require 'model_attachment/amazon'
 
 # The base module that gets included in ActiveRecord::Base.
 module ModelAttachment
-  VERSION = "0.0.7"
+  VERSION = "0.0.8"
   
   class << self
     
@@ -132,8 +132,9 @@ module ModelAttachment
       server_name += ":" + port.to_s if port
       type_string = "?type=#{type}" if type
       
-      unless self.class.attachment_options[:aws]
-        bucket = nil
+      # if we aren't using aws set @bucket to nil
+      if !self.class.attachment_options[:aws]
+        @bucket = nil
       end
       
       # if files are public, serve public url
@@ -141,12 +142,12 @@ module ModelAttachment
         url_path = path.gsub(/^\/public(.*)/, '\1')
         type_string = "_#{type}" if type
         url = "#{proto}://#{server_name}#{url_path}#{basename}#{type_string}#{extension}"
-      elsif !bucket.nil?
-        # if bucket is set, then use aws url
-        aws_url(type)
-      else
+      elsif bucket.nil?
         # otherwise use private url with deliver
         url = "#{proto}://#{server_name}#{url_path}#{id}#{type_string}"
+      else
+        # if bucket is set, then use aws url
+        url = aws_url(type)
       end
       
       log("Providing URL: #{url}")
@@ -162,7 +163,7 @@ module ModelAttachment
       if (self.class.attachment_options[:path]) 
         return interpolate(self.class.attachment_options[:path])
       else 
-        return "/public/#{self.class.to_s.downcase.pluralize}/" + sprintf("%04d", id) + "/"
+        return "/public/system/#{self.class.to_s.downcase.pluralize}/" + sprintf("%04d", id) + "/"
       end
     end
     
@@ -197,10 +198,15 @@ module ModelAttachment
       content_type =~ /^image\//
     end
     
+    def valid_methods
+      # reject any methods that will cause issues
+      self.class.instance_methods.sort.reverse.reject {|m| m =~ /\W+/ }
+    end
+    
     # create the path based on the template
     def interpolate(path, *args)
       #methods = ["domain", "folder", "document", "version", "user", "account"]
-      self.class.instance_methods(false).sort.reverse.inject( path.dup ) do |result, tag|
+      valid_methods.inject( path.dup ) do |result, tag|
         #$stderr.puts("Result: #{result} Tag: #{tag}")
         result.gsub(/:#{tag}/) do |match|
           send( tag, *args )
