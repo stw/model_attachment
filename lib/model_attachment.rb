@@ -14,7 +14,7 @@ require 'model_attachment/amazon'
 
 # The base module that gets included in ActiveRecord::Base.
 module ModelAttachment
-  VERSION = "0.0.6"
+  VERSION = "0.0.7"
   
   class << self
     
@@ -70,6 +70,7 @@ module ModelAttachment
       before_destroy :destroy_attached_files
       
     end
+
     
     # Places ActiveRecord-style validations on the size of the file assigned. The
     # possible options are:
@@ -126,11 +127,16 @@ module ModelAttachment
       proto       = options[:proto]        || "http"
       port        = options[:port]
       server_name = options[:server_name]  || "localhost"
-      url_path    = options[:path]         || "/documents/send"
+      url_path    = options[:path]         || "/#{self.class.to_s.downcase.pluralize}/deliver/"
       type        = options[:type]
-      server_name += ":" + port if port
+      server_name += ":" + port.to_s if port
       
-      url = (bucket.nil? ? "#{proto}://#{server_name}#{url_path}?id=#{id}" : aws_url(type))
+      unless self.class.attachment_options[:aws]
+        bucket = nil
+      end
+      
+      url = (!bucket.nil? ? aws_url(type) : "#{proto}://#{server_name}#{url_path}#{id}")
+      
       log("Providing URL: #{url}")
       return url
     end
@@ -238,8 +244,8 @@ module ModelAttachment
     
     # create the path based on the template
     def interpolate(path, *args)
-      methods = ["domain", "folder", "document", "version"]
-      methods.reverse.inject( path.dup ) do |result, tag|
+      #methods = ["domain", "folder", "document", "version", "user", "account"]
+      self.class.instance_methods(false).sort.reverse.inject( path.dup ) do |result, tag|
         result.gsub(/:#{tag}/) do |match|
           send( tag, *args )
         end
