@@ -14,7 +14,7 @@ require 'model_attachment/amazon'
 
 # The base module that gets included in ActiveRecord::Base.
 module ModelAttachment
-  VERSION = "0.0.8"
+  VERSION = "0.0.9"
   
   class << self
     
@@ -293,19 +293,19 @@ module ModelAttachment
           remove_from_amazon
         end
         
-      rescue Errno::ENOENT => e
-        # ignore file-not-found, let everything else pass
+      rescue Exception => e
+        log("Error: #{e.message}")
       end
+      
+      # remove document directory
       begin
-        while(true)
-          dir_path = File.dirname(full_filename)
-          FileUtils.rmdir(dir_path)
-        end
-      rescue Errno::EEXIST, Errno::ENOTEMPTY, Errno::ENOENT, Errno::EINVAL, Errno::ENOTDIR
-        # Stop trying to remove parent directories
-      rescue SystemCallError => e
-        log("There was an unexpected error while deleting directories: #{e.class}")
-        # Ignore it
+        dir_path = File.dirname(full_filename)
+        parts    = dir_path.split(File::SEPARATOR)
+        dir_path = File.join(parts[0 .. -2])
+        log("Removing Dir: #{dir_path}")
+        FileUtils.rm_rf(dir_path)
+      rescue Exception => e
+        log("Error: #{e.message}")
       end 
     end
     
