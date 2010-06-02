@@ -14,7 +14,7 @@ require 'model_attachment/amazon'
 
 # The base module that gets included in ActiveRecord::Base.
 module ModelAttachment
-  VERSION = "0.0.11"
+  VERSION = "0.0.12"
   
   class << self
     
@@ -127,11 +127,8 @@ module ModelAttachment
       proto       = options[:proto]        || "http"
       port        = options[:port]
       server_name = options[:server_name]  || "localhost"
-      url_path    = options[:path]         || "/#{self.class.to_s.downcase.pluralize}/deliver/"
+      url_path    = options[:path]         || "/#{self.class.to_s.downcase.pluralize}/"
       type        = options[:type]
-      
-      version     = options[:version]
-      version_string = "?v=#{version}" if version
       
       server_name += ":" + port.to_s if port
       type_string = "?type=#{type}" if type
@@ -148,7 +145,7 @@ module ModelAttachment
         url = "#{proto}://#{server_name}#{url_path}#{basename}#{type_string}#{extension}"
       elsif bucket.nil?
         # otherwise use private url with deliver
-        url = "#{proto}://#{server_name}#{url_path}#{id}#{type_string}#{version_string}"
+        url = "#{proto}://#{server_name}#{url_path}#{id}#{type_string}"
       else
         # if bucket is set, then use aws url
         url = aws_url(type)
