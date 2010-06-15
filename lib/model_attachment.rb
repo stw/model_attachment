@@ -14,7 +14,7 @@ require 'model_attachment/amazon'
 
 # The base module that gets included in ActiveRecord::Base.
 module ModelAttachment
-  VERSION = "0.0.12"
+  VERSION = "0.0.13"
   
   class << self
     
@@ -49,7 +49,7 @@ module ModelAttachment
       end
     
       if options[:aws] == :default
-        config_file = File.join(RAILS_ROOT, "config", "amazon.yml")
+        config_file = File.join(Rails.root, "config", "amazon.yml")
         if File.exist?(config_file)
           options[:aws] = config_file
           include AmazonInstanceMethods
@@ -170,7 +170,7 @@ module ModelAttachment
     
     # returns the full system path of the file
     def full_path
-      RAILS_ROOT + path
+      File.join(Rails.root, path)
     end
     
     # returns the filename, including any type modifier
@@ -249,7 +249,7 @@ module ModelAttachment
       return if @temp_file.nil? or @temp_file == ""
       options = self.class.attachment_options
             
-      log("Path: #{path} Basename: #{basename} Extension: #{extension}")
+      log("Path: #{full_path} Basename: #{basename} Extension: #{extension}")
 
       # copy image to correct path
       FileUtils.mkdir_p(full_path)
