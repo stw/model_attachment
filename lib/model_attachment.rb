@@ -11,18 +11,10 @@ require 'rubygems'
 require 'yaml'
 require 'model_attachment/upfile'
 require 'model_attachment/amazon'
-
-
-
-ActiveSupport.on_load(:active_record) do
-  include ModelAttachment
-end
-
-
+require 'model_attachment/version'
 
 # The base module that gets included in ActiveRecord::Base.
 module ModelAttachment
-  VERSION = "0.0.13"
   
   class << self
     
@@ -58,6 +50,7 @@ module ModelAttachment
     
       if options[:aws] == :default
         config_file = File.join(Rails.root, "config", "amazon.yml")
+        $stderr.puts "Config: " + config_file
         if File.exist?(config_file)
           options[:aws] = config_file
           include AmazonInstanceMethods
@@ -337,9 +330,11 @@ module ModelAttachment
 end
 
 # Rails 3
-ActiveSupport.on_load(:active_record) do
-  include ModelAttachment
-  File.send(:include, ModelAttachment::Upfile)
+if Object.const_defined?("ActiveRecord")
+  ActiveSupport.on_load(:active_record) do
+    include ModelAttachment
+    File.send(:include, ModelAttachment::Upfile)
+  end
 end
 
 # Set it up in our model

@@ -9,15 +9,23 @@ require 'test/unit'
 
 require 'rubygems'
 require 'active_record'
+require 'logger'
 require 'fileutils'
 
-$:.unshift File.dirname(__FILE__) + '/../lib'
-require File.dirname(__FILE__) + '/../init'
+$:.unshift File.dirname(__FILE__) + '/../../lib'
+require 'model_attachment'
 
-RAILS_ROOT = File.dirname(__FILE__)
+class Rails
+  def self.root
+    File.dirname(__FILE__) + "/.."
+  end
+end
+
+RAILS_ROOT = File.dirname(__FILE__) + "/.."
 
 class Test::Unit::TestCase
 end
+
 
 ActiveRecord::Base.establish_connection(:adapter => "sqlite3", :database => ":memory:")
 
@@ -80,7 +88,7 @@ end
 
 class DocumentWithAWS < Document
   has_attachment :path => "/system/:domain/:folder/:document/:version/", 
-    :aws => File.join(File.dirname(__FILE__), "amazon.yml"),
+    :aws => File.join(Rails.root, "amazon.yml"),
     :types => {
       :small => { :command => '/opt/local/bin/convert -geometry 100x100' } 
     },
@@ -170,7 +178,7 @@ class ModelAttachmentTest < Test::Unit::TestCase
     document.save
     assert File.exist?(RAILS_ROOT + "/system/bbs/1/1/0/test3.jpg")
     
-    assert_equal "http://localhost:3000/documentwithaws/deliver/1", document.url(:port => "3000")
+    assert_equal "http://localhost:3000/documentwithaws/1", document.url(:port => "3000")
     assert_equal "test3.jpg", document.file_name
     assert_equal String, document.file_name.class
     assert_equal "image/jpeg", document.content_type
