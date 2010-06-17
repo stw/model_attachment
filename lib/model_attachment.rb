@@ -12,6 +12,14 @@ require 'yaml'
 require 'model_attachment/upfile'
 require 'model_attachment/amazon'
 
+
+
+ActiveSupport.on_load(:active_record) do
+  include ModelAttachment
+end
+
+
+
 # The base module that gets included in ActiveRecord::Base.
 module ModelAttachment
   VERSION = "0.0.13"
@@ -328,8 +336,14 @@ module ModelAttachment
   
 end
 
-# Set it up in our model
-if Object.const_defined?("ActiveRecord")
-  ActiveRecord::Base.send(:include, ModelAttachment)
+# Rails 3
+ActiveSupport.on_load(:active_record) do
+  include ModelAttachment
   File.send(:include, ModelAttachment::Upfile)
 end
+
+# Set it up in our model
+# if Object.const_defined?("ActiveRecord")
+#   ActiveRecord::Base.send(:include, ModelAttachment)
+#   File.send(:include, ModelAttachment::Upfile)
+# end
