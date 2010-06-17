@@ -50,7 +50,6 @@ module ModelAttachment
     
       if options[:aws] == :default
         config_file = File.join(Rails.root, "config", "amazon.yml")
-        $stderr.puts "Config: " + config_file
         if File.exist?(config_file)
           options[:aws] = config_file
           include AmazonInstanceMethods
