@@ -6,7 +6,9 @@ module ModelAttachment
     def aws_url(type = "")
       begin
         return AWS::S3::S3Object.find(aws_key(type), default_bucket).url
-      rescue
+      rescue Exception => e
+        log("Amazon: #{e.message}")
+        log("Backtrace: #{e.backtrace[0]}")
         log("Could not get object: #{aws_key(type)}")
       end
     end
