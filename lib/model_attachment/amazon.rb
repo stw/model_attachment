@@ -4,6 +4,8 @@ module ModelAttachment
     # returns the aws url
     # +type+: type passed to has_attachment, ex. small, large
     def aws_url(type = "")
+      aws_connect
+      
       begin
         return AWS::S3::S3Object.find(aws_key(type), default_bucket).url
       rescue Exception => e
