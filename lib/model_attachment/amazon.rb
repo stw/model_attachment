@@ -96,7 +96,7 @@ module ModelAttachment
     def move_to_filesystem
       aws_connect
       begin 
-        open(full_filename, 'w') do |file|
+        File.open(full_filename, 'wb') do |file|
           AWS::S3::S3Object.stream(path + file_name, default_bucket) do |chunk|
             file.write chunk
           end
