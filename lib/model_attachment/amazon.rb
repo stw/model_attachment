@@ -99,7 +99,7 @@ module ModelAttachment
         File.open(full_filename, 'wb') do |file|
           AWS::S3::S3Object.stream(path + file_name, default_bucket) do |chunk|
             if defined? Encoding
-              chunk = chunk.force_encoding(Encoding::UTF_8).encode if chunk.encoding == Encoding::ASCII_8BIT
+              chunk.force_encoding(Encoding::UTF_8).encode if chunk.encoding == Encoding::ASCII_8BIT
             end
             file.write chunk
           end
@@ -110,7 +110,7 @@ module ModelAttachment
           open(full_filename(name), 'w') do |file|
             AWS::S3::S3Object.stream(path + filename(name), default_bucket) do |chunk|
               if defined? Encoding
-                chunk = chunk.force_encoding(Encoding::UTF_8).encode if chunk.encoding == Encoding::ASCII_8BIT
+                chunk.force_encoding(Encoding::UTF_8).encode if chunk.encoding == Encoding::ASCII_8BIT
               end
               file.write chunk
             end
