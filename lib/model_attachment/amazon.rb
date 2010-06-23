@@ -98,6 +98,7 @@ module ModelAttachment
       begin 
         File.open(full_filename, 'wb') do |file|
           AWS::S3::S3Object.stream(path + file_name, default_bucket) do |chunk|
+            log("Encoding: #{chunk.encoding}")
             if defined? Encoding
               chunk.force_encoding(Encoding::UTF_8).encode if chunk.encoding == Encoding::ASCII_8BIT
             end
