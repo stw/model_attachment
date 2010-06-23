@@ -56,11 +56,11 @@ module ModelAttachment
       aws_connect
       
       begin
-        AWS::S3::S3Object.store(aws_key, open(full_filename), default_bucket, :content_type => content_type)
+        AWS::S3::S3Object.store(aws_key, open(full_filename, 'rb'), default_bucket, :content_type => content_type)
         
         # copy over modified files
         process_image_types do |name, value|
-          AWS::S3::S3Object.store(aws_key(name.to_s), open(full_filename), default_bucket, :content_type => content_type)
+          AWS::S3::S3Object.store(aws_key(name.to_s), open(full_filename, 'rb'), default_bucket, :content_type => content_type)
         end
         
         self.bucket = default_bucket
@@ -98,7 +98,7 @@ module ModelAttachment
       begin 
         # streaming causes encoding error
         
-        File.open(full_filename, 'w') do |file|
+        File.open(full_filename, 'wb') do |file|
           
           file.write(AWS::S3::S3Object.value(path + file_name, default_bucket))
           file.rewind
@@ -111,7 +111,7 @@ module ModelAttachment
         
         # copy over modified files
         process_image_types do |name, value|
-          File.open(full_filename(name), 'w') do |file|
+          File.open(full_filename(name), 'wb') do |file|
             
             file.write(AWS::S3::S3Object.value(path + file_name, default_bucket))
             file.rewind
