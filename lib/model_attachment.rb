@@ -231,10 +231,15 @@ module ModelAttachment
     def save_attributes
       return if file_name.nil? || file_name.class.to_s == "String"
       @temp_file = self.file_name
-      
+
       # get original filename info and clean up for storage
-      ext  = File.extname(@temp_file)
-      base = File.basename(@temp_file, ext).strip.gsub(/[^A-Za-z\d\.\-_]+/, '_')
+      filename = File.basename(@temp_file)
+      if @temp_file.original_filename 
+        filename = @temp_file.original_filename
+      end
+      
+      ext  = File.extname(filename)
+      base = File.basename(filename, ext).strip.gsub(/[^A-Za-z\d\.\-_]+/, '_')
       
       # save attributes
       self.file_name    = base + ext
