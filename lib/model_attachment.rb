@@ -216,17 +216,7 @@ module ModelAttachment
     end
     
     private
-    
-    def process_image_types #:nodoc:
-      if self.class.attachment_options[:types]
-        self.class.attachment_options[:types].each do |name, value|
-          if image?
-            yield(name, value)
-          end
-        end
-      end
-    end
-    
+  
     # save the correct attribute info before the save
     def save_attributes
       return if file_name.nil? || file_name.class.to_s == "String"
@@ -256,17 +246,25 @@ module ModelAttachment
             
       log("Path: #{full_path} Basename: #{basename} Extension: #{extension}")
 
-      # copy image to correct path
-      FileUtils.mkdir_p(full_path)
-      FileUtils.chmod(0755, full_path)
-      FileUtils.mv(@temp_file.path, full_path + basename + extension)
+      begin 
+        # copy image to correct path
+        FileUtils.mkdir_p(full_path)
+        FileUtils.chmod(0755, full_path)
+        FileUtils.mv(@temp_file.path, full_path + basename + extension)
 
-      # run any processing passed in on images
-      process_images
-      
-      @dirty = true 
-      @temp_file.close if @temp_file.respond_to?(:close)
-      @temp_file = nil
+        # run any processing passed in on images
+        process_images
+      rescue Exception => e
+        puts "Error: #{e.message}"
+        puts "\tBacktrace: #{e.backtrace[0..2]}"
+        
+        log("Error: #{e.message}")
+        log("\tBacktrace: #{e.backtrace[0]}")
+      ensure
+        @temp_file.close if @temp_file.respond_to?(:close)
+        @dirty = true 
+        @temp_file = nil
+      end
     end
         
     # run each processor on file
@@ -278,6 +276,16 @@ module ModelAttachment
         log("Create #{name} by running #{command} on #{old_filename}")
         log("Created: #{new_filename}")
         `#{command} #{old_filename} #{new_filename}`
+      end
+    end
+    
+    def process_image_types #:nodoc:
+      if self.class.attachment_options[:types]
+        self.class.attachment_options[:types].each do |name, value|
+          if image?
+            yield(name, value)
+          end
+        end
       end
     end
     
