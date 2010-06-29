@@ -249,7 +249,7 @@ module ModelAttachment
 
       begin 
         # copy image to correct path
-        unless Dir.exists?
+        unless Dir.exists?(full_path)
           FileUtils.mkdir_p(full_path)
         end
         FileUtils.chmod(0755, full_path)
@@ -257,7 +257,7 @@ module ModelAttachment
         if File.exists?(@temp_file.path)
           FileUtils.mv(@temp_file.path, full_path + basename + extension)
         else 
-          raise "File: #{@temp_file.path} does not exist"
+          raise "File Error: #{@temp_file.path} does not exist"
         end
         
         # run any processing passed in on images
