@@ -243,15 +243,23 @@ module ModelAttachment
     def save_attached_files
       return if @temp_file.nil? or @temp_file == ""
       options = self.class.attachment_options
-            
+         
+      puts "Path: #{full_path} Basename: #{basename} Extension: #{extension}"
       log("Path: #{full_path} Basename: #{basename} Extension: #{extension}")
 
       begin 
         # copy image to correct path
-        FileUtils.mkdir_p(full_path)
+        unless Dir.exists?
+          FileUtils.mkdir_p(full_path)
+        end
         FileUtils.chmod(0755, full_path)
-        FileUtils.mv(@temp_file.path, full_path + basename + extension)
-
+        
+        if File.exists?(@temp_file.path)
+          FileUtils.mv(@temp_file.path, full_path + basename + extension)
+        else 
+          raise "File: #{@temp_file.path} does not exist"
+        end
+        
         # run any processing passed in on images
         process_images
       rescue Exception => e
@@ -270,12 +278,17 @@ module ModelAttachment
     # run each processor on file
     def process_images
       process_image_types do |name, value|
-        command = value[:command]
-        old_filename = full_filename
-        new_filename = full_filename(name)
-        log("Create #{name} by running #{command} on #{old_filename}")
-        log("Created: #{new_filename}")
-        `#{command} #{old_filename} #{new_filename}`
+        begin
+          command = value[:command]
+          old_filename = full_filename
+          new_filename = full_filename(name)
+          log("Create #{name} by running #{command} on #{old_filename}")
+          log("Created: #{new_filename}")
+          `#{command} #{old_filename} #{new_filename}`
+        rescue Exception => e
+          puts "Process Images Error: #{e.message}"
+          puts "\tBacktrace: #{e.backtrace[0]}"
+        end
       end
     end
     
