@@ -284,7 +284,7 @@ module ModelAttachment
           new_filename = full_filename(name)
           log("Create #{name} by running #{command} on #{old_filename}")
           log("Created: #{new_filename}")
-          `#{command} #{old_filename} #{new_filename}`
+          `#{command} #{old_filename} #{new_filename} ; chmod 640 #{new_filename}`
         rescue Exception => e
           puts "Process Images Error: #{e.message}"
           puts "\tBacktrace: #{e.backtrace[0]}"
