@@ -254,7 +254,11 @@ module ModelAttachment
         FileUtils.chmod(0755, full_path)
         
         if File.exists?(@temp_file.path)
-          FileUtils.mv(@temp_file.path, full_path + basename + extension)
+          new_file = full_path + basename + extension
+          FileUtils.mv(@temp_file.path, new_file)
+          if File.exists?(new_file)
+            File.open(new_file).chmod(0640)
+          end
         else 
           raise "File Error: #{@temp_file.path} does not exist"
         end
