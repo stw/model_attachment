@@ -244,7 +244,6 @@ module ModelAttachment
       return if @temp_file.nil? or @temp_file == ""
       options = self.class.attachment_options
          
-      puts "Path: #{full_path} Basename: #{basename} Extension: #{extension}"
       log("Path: #{full_path} Basename: #{basename} Extension: #{extension}")
 
       begin 
