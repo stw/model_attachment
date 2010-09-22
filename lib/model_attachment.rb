@@ -124,13 +124,13 @@ module ModelAttachment
     # * +path+: sets the path, defaults to /documents/send
     # * +type+: sets the type, types come from the has_attachment method, ex. small, large
     def url(options = {})
-      proto       = options[:proto]        || "http"
+      proto       = options[:proto]        || "http://"
       port        = options[:port]
       server_name = options[:server_name]  || "localhost"
       url_path    = options[:path]         || "/#{self.class.to_s.downcase.pluralize}/"
       type        = options[:type]
       
-      server_name += ":" + port.to_s if port && port != 80 && port != 443
+      server_name += ":" + port.to_s if !port.nil? && port != 80 && port != 443
       type_string = "?type=#{type}" if type
       
       # if we aren't using aws set @bucket to nil
@@ -142,10 +142,10 @@ module ModelAttachment
       if public?
         url_path = path.gsub(/^\/public(.*)/, '\1')
         type_string = "_#{type}" if type
-        url = "#{proto}://#{server_name}#{url_path}#{basename}#{type_string}#{extension}"
+        url = "#{proto}#{server_name}#{url_path}#{basename}#{type_string}#{extension}"
       elsif bucket.nil?
         # otherwise use private url with deliver
-        url = "#{proto}://#{server_name}#{url_path}#{id}#{type_string}"
+        url = "#{proto}#{server_name}#{url_path}#{id}#{type_string}"
       else
         # if bucket is set, then use aws url
         url = aws_url(type)
