@@ -130,7 +130,7 @@ module ModelAttachment
       url_path    = options[:path]         || "/#{self.class.to_s.downcase.pluralize}/"
       type        = options[:type]
       
-      server_name += ":" + port.to_s if port
+      server_name += ":" + port.to_s if port && port != 80 && port != 443
       type_string = "?type=#{type}" if type
       
       # if we aren't using aws set @bucket to nil
