@@ -220,24 +220,19 @@ module ModelAttachment
     # save the correct attribute info before the save
     def save_attributes
       return if file_name.nil? || file_name.class.to_s == "String"
-      # this used to be @temp_file = self.file_name but some change must have happened between 3.0.1 and 3.0.5
-      @temp_file = (self.file_name.class == "ActionDispatch::Http::UploadedFile" ? self.file_name.tempfile : self.file_name)
+      # ensure we save the tempfile before overwriting file_name
+      @temp_file = self.file_name.tempfile
 
       # get original filename info and clean up for storage
-      filename = File.basename(@temp_file)
-      if @temp_file.original_filename 
-        filename = @temp_file.original_filename
-      end
-      
+      filename = (self.file_name.respond_to?(:original_filename) ? File.basename(self.file_name.original_filename) : File.basename(self.file_name))
       ext  = File.extname(filename)
       base = File.basename(filename, ext).strip.gsub(/[^A-Za-z\d\.\-_]+/, '_')
       
       # save attributes
+      self.content_type = self.file_name.content_type.strip
+      self.file_size    = self.file_name.tempfile.size.to_i
       self.file_name    = base + ext
-      self.content_type = @temp_file.content_type.strip
-      self.file_size    = @temp_file.size.to_i
-      self.updated_at   = Time.now
-      
+      self.updated_at   = Time.now   
     end
     
     # Does all the file processing, moves from temp, processes images
