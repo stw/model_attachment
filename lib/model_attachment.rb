@@ -221,7 +221,7 @@ module ModelAttachment
     def save_attributes
       return if file_name.nil? || file_name.class.to_s == "String"
       # this used to be @temp_file = self.file_name but some change must have happened between 3.0.1 and 3.0.5
-      @temp_file = (self.file_name.class == "ActionDispatch::Http::UploadFile" ? self.file_name.tempfile : self.file_name)
+      @temp_file = (self.file_name.class == "ActionDispatch::Http::UploadedFile" ? self.file_name.tempfile : self.file_name)
 
       # get original filename info and clean up for storage
       filename = File.basename(@temp_file)
