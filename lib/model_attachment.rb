@@ -221,7 +221,7 @@ module ModelAttachment
     def save_attributes
       return if file_name.nil? || file_name.class.to_s == "String"
       # ensure we save the tempfile before overwriting file_name
-      @temp_file = self.file_name.tempfile
+      @temp_file = (self.file_name.respond_to?(:tempfile) ? self.file_name.tempfile : self.file_name)
 
       # get original filename info and clean up for storage
       filename = (self.file_name.respond_to?(:original_filename) ? File.basename(self.file_name.original_filename) : File.basename(self.file_name))
@@ -230,7 +230,7 @@ module ModelAttachment
       
       # save attributes
       self.content_type = self.file_name.content_type.strip
-      self.file_size    = self.file_name.tempfile.size.to_i
+      self.file_size    = (self.file_name.respond_to?(:tempfile) ? self.file_name.tempfile.size.to_i : @temp_file.size.to_i)
       self.file_name    = base + ext
       self.updated_at   = Time.now   
     end
