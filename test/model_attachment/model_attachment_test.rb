@@ -82,7 +82,7 @@ end
 class DocumentWithResize < Document
   has_attachment :path => "/system/:domain/:folder/:document/:version/",
     :types => {
-      :small => { :command => '/opt/local/bin/convert -geometry 100x100' } 
+      :small => { :command => '/usr/local/bin/convert -geometry 100x100' } 
     }
 end
 
@@ -90,8 +90,9 @@ class DocumentWithAWS < Document
   has_attachment :path => "/system/:domain/:folder/:document/:version/", 
     :aws => File.join(Rails.root, "amazon.yml"),
     :types => {
-      :small => { :command => '/opt/local/bin/convert -geometry 100x100' } 
+      :small => { :command => '/usr/local/bin/convert -geometry 100x100' } 
     },
+    :bucket => 'test.globalfolders.com',
     :logging => true
 end
 
@@ -184,10 +185,10 @@ class ModelAttachmentTest < Test::Unit::TestCase
     assert_equal "image/jpeg", document.content_type
     
     document.move_to_amazon
-    assert_equal 'globalfolders', document.bucket
+    assert_equal 'test.globalfolders.com', document.bucket
     
-    assert_match /https:\/\/s3.amazonaws.com\/globalfolders\/system\/bbs\/1\/1\/0\/test3\.jpg/, document.url
-    assert_match /https:\/\/s3.amazonaws.com\/globalfolders\/system\/bbs\/1\/1\/0\/test3_small\.jpg/, document.url(:type => "small")
+    assert_match /https:\/\/s3.amazonaws.com\/test.globalfolders.com\/system\/bbs\/1\/1\/0\/test3\.jpg/, document.url
+    assert_match /https:\/\/s3.amazonaws.com\/test.globalfolders.com\/system\/bbs\/1\/1\/0\/test3_small\.jpg/, document.url(:type => "small")
     
     assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test3.jpg")
     assert !File.exists?(RAILS_ROOT + "/system/bbs/1/1/0/test3_small.jpg")

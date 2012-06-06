@@ -59,8 +59,10 @@ module ModelAttachment
       elsif !options[:aws].nil? && File.exist?(options[:aws])
         include AmazonInstanceMethods
       end
-      
-      write_inheritable_attribute(:attachment_options, options)
+
+      class_attribute :attachment_options
+      self.attachment_options = options
+#      write_inheritable_attribute(:attachment_options, options)
         
       # must be before the save to save the attributes
       before_save :save_attributes
@@ -110,7 +112,8 @@ module ModelAttachment
     
     # Returns attachment options defined by each call to acts_as_attachment.
     def attachment_options
-      read_inheritable_attribute(:attachment_options)
+#      read_inheritable_attribute(:attachment_options)
+      self.attachment_options
     end
     
   end

@@ -1,5 +1,6 @@
 module ModelAttachment
   module AmazonInstanceMethods
+    attr_accessor :default_bucket
     
     # returns the aws url
     # +type+: type passed to has_attachment, ex. small, large
@@ -15,12 +16,6 @@ module ModelAttachment
       end
     end
     
-    # sets the default aws bucket
-    # +current_bucket+: set the current bucket, default 'globalfolders'
-    def default_bucket(current_bucket = 'globalfolders')
-      current_bucket
-    end
-
     # creates the aws_key
     # +type+: type passed to has_attachment, ex. small, large
     def aws_key(type = "")
@@ -41,7 +36,8 @@ module ModelAttachment
             :secret_access_key => config['secret_access_key'],
             :use_ssl           => true,
             :persistent        => true  # if issues with disconnections, set to false
-          )
+                                              )
+          self.default_bucket = self.class.attachment_options[:bucket] || 'globalfolders'
         else
           raise "You must provide an amazon.yml config file"
         end
@@ -63,7 +59,7 @@ module ModelAttachment
           AWS::S3::S3Object.store(aws_key(name.to_s), open(full_filename, 'rb'), default_bucket, :content_type => content_type)
         end
         
-        self.bucket = default_bucket
+        self.bucket = self.default_bucket
         @dirty = true
         save!
       rescue AWS::S3::ResponseError => error
