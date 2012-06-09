@@ -1,9 +1,9 @@
-# 
+#
 #  model_attachment.rb
-#  
+#
 #  Created by Stephen Walker on 2010-04-22.
 #  Copyright 2010 Stephen Walker. All rights reserved.
-# 
+#
 
 # TODO - Add exception handling and validation testing
 
@@ -15,15 +15,15 @@ require 'model_attachment/version'
 
 # The base module that gets included in ActiveRecord::Base.
 module ModelAttachment
-  
+
   class << self
-    
+
     def included base #:nodoc:
       base.extend ClassMethods
     end
-    
+
   end
-  
+
   module ClassMethods
     # +has_attachment+ adds the ability to upload files and make thumbnails of images
     # * +path+: the path format for saving the documents
@@ -34,11 +34,11 @@ module ModelAttachment
     #            }
     # * +aws+: the path to the aws config file or :default for rails config/amazon.yml
     #          access_key_id:
-    #          secret_access_key: 
+    #          secret_access_key:
     # * +logging+: set to true to see logging
     def has_attachment(options = {})
       include InstanceMethods
-      
+
       if options[:aws]
         begin
           require 'aws/s3'
@@ -47,7 +47,7 @@ module ModelAttachment
           raise e
         end
       end
-    
+
       if options[:aws] == :default
         config_file = File.join(Rails.root, "config", "amazon.yml")
         if File.exist?(config_file)
@@ -62,18 +62,18 @@ module ModelAttachment
 
       class_attribute :attachment_options
       self.attachment_options = options
-#      write_inheritable_attribute(:attachment_options, options)
-        
+      #      write_inheritable_attribute(:attachment_options, options)
+
       # must be before the save to save the attributes
       before_save :save_attributes
-      
+
       # must be after save to get the id for the path
       after_save :save_attached_files
       before_destroy :destroy_attached_files
-      
+
     end
 
-    
+
     # Places ActiveRecord-style validations on the size of the file assigned. The
     # possible options are:
     # * +in+: a Range of bytes (i.e. +1..1.megabyte+),
@@ -91,10 +91,10 @@ module ModelAttachment
       message = message.gsub(/:min/, min.to_s).gsub(/:max/, max.to_s)
 
       validates_inclusion_of name,
-                             :in      => range,
-                             :message => message,
-                             :if      => options[:if],
-                             :unless  => options[:unless]
+      :in      => range,
+      :message => message,
+      :if      => options[:if],
+      :unless  => options[:unless]
     end
 
     # Places ActiveRecord-style validations on the presence of a file.
@@ -104,22 +104,22 @@ module ModelAttachment
     # * +unless+: Same as +if+ but validates if lambda or method returns false.
     def validates_attachment_presence name, options = {}
       message = options[:message] || "must be set."
-      validates_presence_of name, 
-                            :message => message,
-                            :if      => options[:if],
-                            :unless  => options[:unless]
+      validates_presence_of name,
+      :message => message,
+      :if      => options[:if],
+      :unless  => options[:unless]
     end
-    
+
     # Returns attachment options defined by each call to acts_as_attachment.
     def attachment_options
-#      read_inheritable_attribute(:attachment_options)
+      #      read_inheritable_attribute(:attachment_options)
       self.attachment_options
     end
-    
+
   end
-  
+
   module InstanceMethods #:nodoc:
-    
+
     # return the url based on location
     # * +proto+: set the protocol, defaults to http
     # * +port+: sets the port if required
@@ -132,15 +132,15 @@ module ModelAttachment
       server_name = options[:server_name]  || "localhost"
       url_path    = options[:path]         || "/#{self.class.to_s.downcase.pluralize}/"
       type        = options[:type]
-      
+
       server_name += ":" + port.to_s if !port.nil? && port != 80 && port != 443
       type_string = "?type=#{type}" if type
-      
+
       # if we aren't using aws set @bucket to nil
       if !self.class.attachment_options[:aws]
         @bucket = nil
       end
-      
+
       # if files are public, serve public url
       if public?
         url_path = path.gsub(/^\/public(.*)/, '\1')
@@ -153,60 +153,60 @@ module ModelAttachment
         # if bucket is set, then use aws url
         url = aws_url(type)
       end
-      
+
       log("Providing URL: #{url}")
       return url
     end
-    
+
     def public?
       (path =~ /^\/public/)
     end
-    
+
     # returns the rails path of the file
-    def path 
-      if (self.class.attachment_options[:path]) 
+    def path
+      if (self.class.attachment_options[:path])
         return interpolate(self.class.attachment_options[:path])
-      else 
+      else
         return "/public/system/#{self.class.to_s.downcase.pluralize}/" + sprintf("%04d", id) + "/"
       end
     end
-    
+
     # returns the full system path of the file
     def full_path
       File.join(Rails.root, path)
     end
-    
+
     # returns the filename, including any type modifier
     # +type+: type from has_attachment, ex. small, large
     def filename(type = "")
       type      = "_#{type}" if type != ""
       "#{basename}#{type}#{extension}"
     end
-    
+
     def extension #:nodoc:
       File.extname(file_name)
     end
-    
+
     def basename #:nodoc:
       File.basename(file_name, extension)
     end
-     
+
     # returns the full system path/filename
     # +type+: type from has_attachment, ex. small, large
     def full_filename(type = "")
       full_path + filename(type)
     end
-    
+
     # decide whether or not this is an image
     def image?
       content_type =~ /^image\//
     end
-    
+
     def valid_methods
       # reject any methods that will cause issues
       self.class.instance_methods.sort.reverse.reject {|m| m =~ /\W+/ }
     end
-    
+
     # create the path based on the template
     def interpolate(path, *args)
       #methods = ["domain", "folder", "document", "version", "user", "account"]
@@ -217,9 +217,9 @@ module ModelAttachment
         end
       end
     end
-    
+
     private
-  
+
     # save the correct attribute info before the save
     def save_attributes
       return if file_name.nil? || file_name.class.to_s == "String"
@@ -230,53 +230,53 @@ module ModelAttachment
       filename = (self.file_name.respond_to?(:original_filename) ? File.basename(self.file_name.original_filename) : File.basename(self.file_name))
       ext  = File.extname(filename)
       base = File.basename(filename, ext).strip.gsub(/[^A-Za-z\d\.\-_]+/, '_')
-      
+
       # save attributes
       self.content_type = self.file_name.content_type.strip
       self.file_size    = (self.file_name.respond_to?(:tempfile) ? self.file_name.tempfile.size.to_i : @temp_file.size.to_i)
       self.file_name    = base + ext
-      self.updated_at   = Time.now   
+      self.updated_at   = Time.now
     end
-    
+
     # Does all the file processing, moves from temp, processes images
     def save_attached_files
       return if @temp_file.nil? or @temp_file == ""
       options = self.class.attachment_options
-         
+
       log("Path: #{full_path} Basename: #{basename} Extension: #{extension}")
 
-      begin 
+      begin
         # copy image to correct path
         unless Dir.exists?(full_path)
           FileUtils.mkdir_p(full_path)
         end
         FileUtils.chmod(0755, full_path)
-        
+
         if File.exists?(@temp_file.path)
           new_file = full_path + basename + extension
           FileUtils.mv(@temp_file.path, new_file)
           if File.exists?(new_file)
             File.open(new_file).chmod(0640)
           end
-        else 
+        else
           raise "File Error: #{@temp_file.path} does not exist"
         end
-        
+
         # run any processing passed in on images
         process_images
       rescue Exception => e
         puts "Error: #{e.message}"
         puts "\tBacktrace: #{e.backtrace[0..2]}"
-        
+
         log("Error: #{e.message}")
         log("\tBacktrace: #{e.backtrace[0]}")
       ensure
         @temp_file.close if @temp_file.respond_to?(:close)
-        @dirty = true 
+        @dirty = true
         @temp_file = nil
       end
     end
-        
+
     # run each processor on file
     def process_images
       process_image_types do |name, value|
@@ -293,7 +293,7 @@ module ModelAttachment
         end
       end
     end
-    
+
     def process_image_types #:nodoc:
       if self.class.attachment_options[:types]
         self.class.attachment_options[:types].each do |name, value|
@@ -303,29 +303,29 @@ module ModelAttachment
         end
       end
     end
-    
+
     # removes any files associated with this instance
     def destroy_attached_files
       begin
-        
+
         if bucket.nil?
           log("Deleting #{full_filename}")
           FileUtils.rm(full_filename) if File.exist?(full_filename)
-        
+
           # delete thumbnails if image
           process_image_types do |name, value|
             log("Deleting #{name}")
             FileUtils.rm(full_filename(name)) if File.exists?(full_filename(name))
           end
-        
-        else 
+
+        else
           remove_from_amazon
         end
-        
+
       rescue Exception => e
         log("Error: #{e.message}")
       end
-      
+
       # remove document directory
       begin
         dir_path = File.dirname(full_filename)
@@ -335,25 +335,25 @@ module ModelAttachment
         FileUtils.rm_rf(dir_path)
       rescue Exception => e
         log("Error: #{e.message}")
-      end 
+      end
     end
-    
+
     def logging? #:nodoc:
       self.class.attachment_options[:logging]
     end
-    
+
     # Log a ModelAttachment specific message
     # +message+: message to be logged if logging? true
     def log(message)
       logger.info("[model_attachment] #{message}") if logging?
     end
-  
+
     def dirty? #:nodoc:
       @dirty
     end
-    
+
   end
-  
+
 end
 
 # Rails 3

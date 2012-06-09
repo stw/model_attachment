@@ -16,7 +16,8 @@ module ModelAttachment
       when "js"                      then "application/js"
       when "csv", "xml", "css"       then "text/#{type}"
       else
-        Paperclip.run("file", "--mime-type #{self.path}").split(':').last.strip rescue "application/x-#{type}"
+        Paperclip.run("file", "--mime-type #{self.path}") \
+          .split(':').last.strip rescue "application/x-#{type}"
       end
     end
 
